@@ -4,7 +4,10 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        Text("Hello, World!")
+        PagerView(
+            pages: (0..<4).map {
+                index in Page()
+        })
     }
 }
 
