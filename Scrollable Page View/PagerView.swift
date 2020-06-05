@@ -28,16 +28,6 @@ struct Page: View {
     }
 }
 
-fileprivate let deltaCutoff: CGFloat = 0.7
-
-fileprivate let centerMinRadius: CGFloat = 0
-fileprivate let centerCutoffRadius: CGFloat = 40
-fileprivate let centerMaxRadius: CGFloat = centerMinRadius + centerCutoffRadius
-
-fileprivate let centerMaxHeight = screen.height
-fileprivate let centerCutoffHeight: CGFloat = 150
-fileprivate let centerMinHeight: CGFloat = centerMaxHeight - centerCutoffHeight
-
 struct MultiTransformationPagerView<Content: View>: View {
 
     @State private var currentPageIndex: Int = 1
@@ -45,11 +35,65 @@ struct MultiTransformationPagerView<Content: View>: View {
 
     let pages: [Content]
 
-    private func pageTurnDelta(pageWidth: CGFloat) -> CGFloat {
-        translation / pageWidth
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 0) {
+                ForEach(0..<3) { i in
+                    self.pages[i]
+                        .frame(width: geometry.size.width)
+                        .clipShape(RoundedRectangle(
+                            cornerRadius: self.cornerRadius(for: i, pageWidth: geometry.size.width),
+                            style: .continuous))
+                        .frame(height: self.height(for: i, pageWidth: geometry.size.width))
+
+                }
+            }
+            // The alignment property here is crucial because we are telling the geometry
+            // reader to layout the HStack starting from left. As a result, the middle page
+            // is initially shown. If you try any other alignment, you'll notice that the initial
+            // setup of the HStack is wrong.
+            // The alignment property also influences the scroll direction. By laying out our
+            // pages left to right, we are specifying that to get to the next page, the user has
+            // to scroll in the leftward direction.
+            .frame(width: geometry.size.width, alignment: .leading)
+            // Accounts for the initial offset position that shows the middle page first
+            // Also accounts for subsequent page turns that change `currentIndex`
+            .offset(x: -CGFloat(self.currentPageIndex) * geometry.size.width)
+            // Accounts for user swipe gesture to go to a different page
+            .offset(x: self.translation)
+            .animation(.interactiveSpring())
+            .gesture(
+                DragGesture().updating(self.$translation) { value, state, _ in
+                    // `state` is just a reference to `$translation`
+                    // `value` refers to the current data for the drag
+                    state = value.translation.width
+                }.onEnded { value in
+                    let pageTurnFraction = value.translation.width / geometry.size.width
+                    // If the user has turned the page more than halfway, in which case
+                    // `pageTurnFraction` > .5, we want to set the page that is being
+                    // turned to as the new active page
+                    let newIndex = Int((CGFloat(self.currentPageIndex) - pageTurnFraction).rounded())
+                    // we don't want the index to be greater than 2 or less than 0
+                    self.currentPageIndex = min(max(newIndex, 0), 2)
+                }
+            )
+        }
     }
 
-    private func centerCornerRadius(pageWidth: CGFloat) -> CGFloat {
+}
+
+fileprivate let centerMinRadius: CGFloat = 0
+fileprivate let centerCutoffRadius: CGFloat = 40
+fileprivate let centerMaxRadius: CGFloat = centerMinRadius + centerCutoffRadius
+
+private extension MultiTransformationPagerView {
+
+    func cornerRadius(for index: Int, pageWidth: CGFloat) -> CGFloat {
+        guard index == 1 else { return 0 }
+        return centerCornerRadius(pageWidth: pageWidth)
+    }
+
+    func centerCornerRadius(pageWidth: CGFloat) -> CGFloat {
         // Corner radius should only start being modified for the center and last page
         guard currentPageIndex != 0 else { return centerMinRadius }
 
@@ -85,7 +129,20 @@ struct MultiTransformationPagerView<Content: View>: View {
         }
     }
 
-    private func centerPageHeight(pageWidth: CGFloat) -> CGFloat? {
+}
+
+fileprivate let centerMaxHeight = screen.height
+fileprivate let centerCutoffHeight: CGFloat = 150
+fileprivate let centerMinHeight: CGFloat = centerMaxHeight - centerCutoffHeight
+
+private extension MultiTransformationPagerView {
+
+    func height(for index: Int, pageWidth: CGFloat) -> CGFloat? {
+        guard index == 1 else { return nil }
+        return centerPageHeight(pageWidth: pageWidth)
+    }
+
+    func centerPageHeight(pageWidth: CGFloat) -> CGFloat? {
         // Center page's height should only be modified for the center and last page
         guard currentPageIndex != 0 else { return nil }
 
@@ -120,47 +177,14 @@ struct MultiTransformationPagerView<Content: View>: View {
         }
     }
 
-    var body: some View {
-        GeometryReader { geometry in
-            HStack(spacing: 0) {
-                ForEach(0..<3) { i in
-                    self.pages[i]
-                        .frame(width: geometry.size.width)
-                        .clipShape(RoundedRectangle(cornerRadius: i == 1 ? self.centerCornerRadius(pageWidth: geometry.size.width) : 0, style: .continuous))
-                        .frame(height: i == 1 ? self.centerPageHeight(pageWidth: geometry.size.width) : nil)
+}
 
-                }
-            }
-            // The alignment property here is crucial because we are telling the geometry
-            // reader to layout the HStack starting from left. As a result, the middle page
-            // is initially shown. If you try any other alignment, you'll notice that the initial
-            // setup of the HStack is wrong.
-            // The alignment property also influences the scroll direction. By laying out our
-            // pages left to right, we are specifying that to get to the next page, the user has
-            // to scroll in the leftward direction.
-            .frame(width: geometry.size.width, alignment: .leading)
-            // Accounts for the initial offset position that shows the middle page first
-            // Also accounts for subsequent page turns that change `currentIndex`
-            .offset(x: -CGFloat(self.currentPageIndex) * geometry.size.width)
-            // Accounts for user swipe gesture to go to a different page
-            .offset(x: self.translation)
-            .animation(.interactiveSpring())
-            .gesture(
-                DragGesture().updating(self.$translation) { value, state, _ in
-                    // `state` is just a reference to `$translation`
-                    // `value` refers to the current data for the drag
-                    state = value.translation.width
-                }.onEnded { value in
-                    let pageTurnFraction = value.translation.width / geometry.size.width
-                    // If the user has turned the page more than halfway, in which case
-                    // `pageTurnFraction` > .5, we want to set the page that is being
-                    // turned to as the new active page
-                    let newIndex = Int((CGFloat(self.currentPageIndex) - pageTurnFraction).rounded())
-                    // we don't want the index to be greater than 2 or less than 0
-                    self.currentPageIndex = min(max(newIndex, 0), 2)
-                }
-            )
-        }
+fileprivate let deltaCutoff: CGFloat = 0.7
+
+private extension MultiTransformationPagerView {
+
+    private func pageTurnDelta(pageWidth: CGFloat) -> CGFloat {
+        translation / pageWidth
     }
 
 }
