@@ -45,7 +45,6 @@ struct MultiTransformationPagerView<Content: View>: View {
                             cornerRadius: self.cornerRadius(for: i, pageWidth: geometry.size.width),
                             style: .continuous))
                         .frame(height: self.height(for: i, pageWidth: geometry.size.width))
-
                 }
             }
             // The alignment property here is crucial because we are telling the geometry
@@ -61,7 +60,7 @@ struct MultiTransformationPagerView<Content: View>: View {
             .offset(x: -CGFloat(self.currentPageIndex) * geometry.size.width)
             // Accounts for user swipe gesture to go to a different page
             .offset(x: self.translation)
-            .animation(.interactiveSpring())
+            .animation(.easeInOut)
             .gesture(
                 DragGesture().updating(self.$translation) { value, state, _ in
                     // `state` is just a reference to `$translation`
