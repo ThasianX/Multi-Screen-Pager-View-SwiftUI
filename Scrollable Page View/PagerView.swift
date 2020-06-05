@@ -96,6 +96,9 @@ private extension MultiTransformationPagerView {
     }
 
     func centerCornerRadius(pageWidth: CGFloat) -> CGFloat {
+        // Corner radius should only start being modified for the center and last page
+        guard currentPageIndex != 0 else { return centerMinRadius }
+
         // We want to see how far we've swiped
         let delta = pageTurnDelta(pageWidth: pageWidth)
 
@@ -142,6 +145,9 @@ private extension MultiTransformationPagerView {
     }
 
     func centerPageHeight(pageWidth: CGFloat) -> CGFloat? {
+        // Center page's height should only be modified for the center and last page
+        guard currentPageIndex != 0 else { return nil }
+
         // We want to see how far we've swiped
         let delta = pageTurnDelta(pageWidth: pageWidth)
 
@@ -186,6 +192,9 @@ private extension MultiTransformationPagerView {
     }
 
     func menuRotationAngle(pageWidth: CGFloat) -> Angle {
+        // Center page's height should only be modified for the center and last page
+        guard currentPageIndex != 0 else { return .init(degrees: menuClosedDegrees) }
+
         // We want to see how far we've swiped
         let delta = pageTurnDelta(pageWidth: pageWidth)
 
