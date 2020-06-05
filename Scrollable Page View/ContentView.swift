@@ -4,7 +4,7 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        MultiTransformationPagerView(pages: [Page(color: getRandomColor()), Page(color: getRandomColor()), Page(color: getRandomColor())])
+        MultiTransformationPagerView(pages: [Page(color: getRandomColor()), Page(color: getRandomColor()), Page(color: .clear)])
             .edgesIgnoringSafeArea(.all)
     }
 }
