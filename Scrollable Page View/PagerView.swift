@@ -45,6 +45,9 @@ struct MultiTransformationPagerView<Content: View>: View {
                             cornerRadius: self.cornerRadius(for: i, pageWidth: geometry.size.width),
                             style: .continuous))
                         .frame(height: self.height(for: i, pageWidth: geometry.size.width))
+                        .rotation3DEffect(self.rotationAngle(for: i, pageWidth: geometry.size.width),
+                                          axis: (x: 0, y: 10.0, z: 0),
+                                          anchor: .leading)
                 }
             }
             // The alignment property here is crucial because we are telling the geometry
@@ -93,9 +96,6 @@ private extension MultiTransformationPagerView {
     }
 
     func centerCornerRadius(pageWidth: CGFloat) -> CGFloat {
-        // Corner radius should only start being modified for the center and last page
-        guard currentPageIndex != 0 else { return centerMinRadius }
-
         // We want to see how far we've swiped
         let delta = pageTurnDelta(pageWidth: pageWidth)
 
@@ -116,7 +116,7 @@ private extension MultiTransformationPagerView {
             guard currentPageIndex == 2 else { return centerMinRadius }
             // Once the center page's radius gets restored to its initial radius, we don't
             // want to keep subtracting from its radius
-            guard abs(delta) <= deltaCutoff else { return centerMinRadius }
+            guard delta <= deltaCutoff else { return centerMinRadius }
 
             let radiusToBeSubtracted = delta * (centerCutoffRadius / 0.7)
             return centerMaxRadius - radiusToBeSubtracted
@@ -142,9 +142,6 @@ private extension MultiTransformationPagerView {
     }
 
     func centerPageHeight(pageWidth: CGFloat) -> CGFloat? {
-        // Center page's height should only be modified for the center and last page
-        guard currentPageIndex != 0 else { return nil }
-
         // We want to see how far we've swiped
         let delta = pageTurnDelta(pageWidth: pageWidth)
 
@@ -165,7 +162,7 @@ private extension MultiTransformationPagerView {
             guard currentPageIndex == 2 else { return nil }
             // Once the center page's height gets restored to its initial height, we don't
             // want to keep adding to its height and make it greater than the screen's height
-            guard abs(delta) <= deltaCutoff else { return nil }
+            guard delta <= deltaCutoff else { return nil }
 
             let heightToBeAdded = delta * (centerCutoffHeight / 0.7)
             return centerMinHeight + heightToBeAdded
@@ -178,11 +175,55 @@ private extension MultiTransformationPagerView {
 
 }
 
+fileprivate let menuClosedDegrees: Double = 90
+fileprivate let menuOpenDegrees: Double = 0
+
+private extension MultiTransformationPagerView {
+
+    func rotationAngle(for index: Int, pageWidth: CGFloat) -> Angle {
+        guard index == 2 else { return .init(degrees: 0) }
+        return menuRotationAngle(pageWidth: pageWidth)
+    }
+
+    func menuRotationAngle(pageWidth: CGFloat) -> Angle {
+        // We want to see how far we've swiped
+        let delta = pageTurnDelta(pageWidth: pageWidth)
+
+        // This means we're swiping left
+        if delta < 0 {
+            // If we're at the last page and we're swiping left into the empty
+            // space to the right, we don't want the menu's rotation angle to change
+            guard currentPageIndex == 1 else { return .init(degrees: menuOpenDegrees) }
+            // Now we know we're on the center page and we're swiping towards the last page,
+            // we don't want to over rotate the menu page
+            guard abs(delta) <= deltaCutoff else { return .init(degrees: menuOpenDegrees) }
+
+            let degreesToBeSubtracted = Double(delta) * (menuClosedDegrees / 0.7) // negative
+            return .init(degrees: menuClosedDegrees + degreesToBeSubtracted)
+        } else if delta > 0 {
+            // If we're swiping from the center page towards the first page, we don't
+            // want any rotation changes to the menu page
+            guard currentPageIndex == 2 else { return .init(degrees: menuClosedDegrees) }
+
+            // When we're closing the menu, we don't account for the `deltaCutoff` because
+            // we want the menu to close on the side of the screen, not partway across the screen
+            let degreesToBeAdded = Double(delta) * menuClosedDegrees
+            return .init(degrees: menuOpenDegrees + degreesToBeAdded)
+        } else {
+            // When the user isn't dragging anything and the center page is active, we want
+            // the menu page to be closed. But when the menu page is active and there is no
+            // drag, we want it to be open
+            return currentPageIndex == 1 ? .init(degrees: menuClosedDegrees) : .init(degrees: menuOpenDegrees)
+        }
+    }
+
+}
+
 fileprivate let deltaCutoff: CGFloat = 0.7
 
 private extension MultiTransformationPagerView {
 
-    private func pageTurnDelta(pageWidth: CGFloat) -> CGFloat {
+    func pageTurnDelta(pageWidth: CGFloat) -> CGFloat {
         translation / pageWidth
     }
 
