@@ -100,9 +100,11 @@ struct MenuPage: View {
     @EnvironmentObject var pagerState: PagerState
 
     var body: some View {
-        ZStack(alignment: .leading) {
+        ZStack {
             Color.clear
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Menu")
+                    .font(.largeTitle)
                 Text("PagePagePagePagePagePagePagePage")
                 Text("PagePagePagePagePagePagePagePage")
                 Text("PagePagePagePagePagePagePagePage")
@@ -110,6 +112,7 @@ struct MenuPage: View {
                 Text("PagePagePagePagePagePagePagePage")
             }
             .font(.title)
+            .padding(.horizontal)
         }
         .contentShape(Rectangle())
     }
