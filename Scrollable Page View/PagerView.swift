@@ -5,13 +5,13 @@ import SwiftUI
 
 let screen = UIScreen.main.bounds
 
-struct Page: View {
+struct SidePage: View {
 
-    let color: Color
+    @EnvironmentObject var pagerState: PagerState
 
     var body: some View {
         ZStack(alignment: .leading) {
-            color
+            Color.orange
             VStack(spacing: 0) {
                 Text("Page")
                 Text("Page")
@@ -28,62 +28,138 @@ struct Page: View {
         }
         .contentShape(Rectangle())
     }
-    
+
 }
 
-struct MultiTransformationPagerView<Content: View>: View {
+struct CenterPage: View {
 
-    @State private var currentPageIndex: Int = 1
-    @GestureState private var translation: CGFloat = .zero
+    @EnvironmentObject var pagerState: PagerState
 
-    let pages: [Content]
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Color.green
+            VStack(spacing: 0) {
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+            }
+            .font(.title)
+        }
+        .contentShape(Rectangle())
+    }
+
+}
+
+struct MenuPage: View {
+
+    @EnvironmentObject var pagerState: PagerState
+
+    var body: some View {
+        ZStack {
+            Color.clear
+            VStack(spacing: 0) {
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+                Text("Page")
+            }
+            .font(.title)
+        }
+        .contentShape(Rectangle())
+    }
+
+}
+
+class PagerState: ObservableObject {
+
+    @Published var activeIndex: Int = 1
+    @Published var translation: CGFloat = .zero
+
+}
+
+struct MultiTransformationPagerView: View {
+
+    @EnvironmentObject var pagerState: PagerState
+
+    private let sidePage = SidePage()
+    private let centerPage = CenterPage()
+    private let menuPage = MenuPage()
 
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 0) {
-                ForEach(0..<3) { i in
-                    self.pages[i]
-                        .frame(width: geometry.size.width)
-                        .clipShape(RoundedRectangle(
-                            cornerRadius: self.cornerRadius(for: i, pageWidth: geometry.size.width),
-                            style: .continuous))
-                        .frame(height: self.height(for: i, pageWidth: geometry.size.width))
-                        .rotation3DEffect(self.rotationAngle(for: i, pageWidth: geometry.size.width),
-                                          axis: (x: 0, y: 10.0, z: 0),
-                                          anchor: .leading)
-                        .opacity(self.opacity(for: i, pageWidth: geometry.size.width))
-                }
-            }
-            // The alignment property here is crucial because we are telling the geometry
-            // reader to layout the HStack starting from left. As a result, the middle page
-            // is initially shown. If you try any other alignment, you'll notice that the initial
-            // setup of the HStack is wrong.
-            // The alignment property also influences the scroll direction. By laying out our
-            // pages left to right, we are specifying that to get to the next page, the user has
-            // to scroll in the leftward direction.
-            .frame(width: geometry.size.width, alignment: .leading)
-            // Accounts for the initial offset position that shows the middle page first
-            // Also accounts for subsequent page turns that change `currentIndex`
-            .offset(x: -CGFloat(self.currentPageIndex) * geometry.size.width)
-            // Accounts for user swipe gesture to go to a different page
-            .offset(x: self.translation)
-            .animation(.easeInOut)
-            .gesture(
-                DragGesture().updating(self.$translation) { value, state, _ in
-                    // `state` is just a reference to `$translation`
-                    // `value` refers to the current data for the drag
-                    state = value.translation.width
-                }.onEnded { value in
-                    let pageTurnFraction = value.translation.width / geometry.size.width
-                    // If the user has turned the page more than halfway, in which case
-                    // `pageTurnFraction` > .5, we want to set the page that is being
-                    // turned to as the new active page
-                    let newIndex = Int((CGFloat(self.currentPageIndex) - pageTurnFraction).rounded())
-                    // we don't want the index to be greater than 2 or less than 0
-                    self.currentPageIndex = min(max(newIndex, 0), 2)
-                }
-            )
+            self.pagerHorizontalStack(for: geometry.size.width)
+                // Accounts for the initial offset position that shows the middle page first
+                // Also accounts for subsequent page turns that change `currentIndex`
+                .offset(x: -CGFloat(self.currentPageIndex) * geometry.size.width)
+                // Accounts for user swipe gesture to go to a different page
+                .offset(x: self.translation)
+                .animation(.easeInOut)
+                .gesture(
+                    DragGesture().onChanged { value in
+                        // `value` refers to the current data for the drag
+                        self.pagerState.translation = value.translation.width
+                    }.onEnded { value in
+                        let pageTurnDelta = value.translation.width / geometry.size.width
+                        // If the user has turned the page more than halfway, in which case
+                        // `pageTurnDelta` > .5, we want to set the page that is being
+                        // turned to as the new active page
+                        let newIndex = Int((CGFloat(self.currentPageIndex) - pageTurnDelta).rounded())
+                        // we don't want the index to be greater than 2 or less than 0
+                        self.pagerState.activeIndex = min(max(newIndex, 0), 2)
+                        self.pagerState.translation = .zero
+                    }
+                )
         }
+    }
+
+    private func pagerHorizontalStack(for pageWidth: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            sidePage
+                .frame(width: pageWidth)
+            centerPage
+                .frame(width: pageWidth)
+                .clipShape(RoundedRectangle(
+                    cornerRadius: centerCornerRadius(pageWidth: pageWidth),
+                    style: .continuous))
+                .frame(height: centerPageHeight(pageWidth: pageWidth))
+            menuPage
+                .frame(width: pageWidth)
+                .rotation3DEffect(menuRotationAngle(pageWidth: pageWidth),
+                                  axis: (x: 0, y: 10.0, z: 0),
+                                  anchor: .leading)
+                .opacity(menuOpacity(pageWidth: pageWidth))
+        }
+    }
+
+}
+
+fileprivate let deltaCutoff: CGFloat = 0.7
+
+private extension MultiTransformationPagerView {
+
+    var currentPageIndex: Int {
+        pagerState.activeIndex
+    }
+
+    var translation: CGFloat {
+        pagerState.translation
+    }
+
+    func pageTurnDelta(pageWidth: CGFloat) -> CGFloat {
+        translation / pageWidth
     }
 
 }
@@ -93,11 +169,6 @@ fileprivate let centerCutoffRadius: CGFloat = 40
 fileprivate let centerMaxRadius: CGFloat = centerMinRadius + centerCutoffRadius
 
 private extension MultiTransformationPagerView {
-
-    func cornerRadius(for index: Int, pageWidth: CGFloat) -> CGFloat {
-        guard index == 1 else { return 0 }
-        return centerCornerRadius(pageWidth: pageWidth)
-    }
 
     func centerCornerRadius(pageWidth: CGFloat) -> CGFloat {
         // Corner radius should only start being modified for the center and last page
@@ -144,11 +215,6 @@ fileprivate let centerMinHeight: CGFloat = centerMaxHeight - centerCutoffHeight
 
 private extension MultiTransformationPagerView {
 
-    func height(for index: Int, pageWidth: CGFloat) -> CGFloat? {
-        guard index == 1 else { return nil }
-        return centerPageHeight(pageWidth: pageWidth)
-    }
-
     func centerPageHeight(pageWidth: CGFloat) -> CGFloat? {
         // Center page's height should only be modified for the center and last page
         guard currentPageIndex != 0 else { return nil }
@@ -191,11 +257,6 @@ fileprivate let menuClosedDegrees: Double = 90
 fileprivate let menuOpenDegrees: Double = 0
 
 private extension MultiTransformationPagerView {
-
-    func rotationAngle(for index: Int, pageWidth: CGFloat) -> Angle {
-        guard index == 2 else { return .init(degrees: 0) }
-        return menuRotationAngle(pageWidth: pageWidth)
-    }
 
     func menuRotationAngle(pageWidth: CGFloat) -> Angle {
         // Center page's height should only be modified for the center and last page
@@ -240,11 +301,6 @@ fileprivate let menuOpenOpacity: Double = 1
 
 private extension MultiTransformationPagerView {
 
-    func opacity(for index: Int, pageWidth: CGFloat) -> Double {
-        guard index == 2 else { return 1 }
-        return menuOpacity(pageWidth: pageWidth)
-    }
-
     func menuOpacity(pageWidth: CGFloat) -> Double {
         // Menu page's opacity should only be modified when either the center or menu is active
         guard currentPageIndex != 0 else { return menuClosedOpacity }
@@ -283,19 +339,10 @@ private extension MultiTransformationPagerView {
     }
 }
 
-fileprivate let deltaCutoff: CGFloat = 0.7
-
-private extension MultiTransformationPagerView {
-
-    func pageTurnDelta(pageWidth: CGFloat) -> CGFloat {
-        translation / pageWidth
-    }
-
-}
-
 struct MultiTransformationPagerView_Previews: PreviewProvider {
     static var previews: some View {
-        MultiTransformationPagerView(pages: [Page(color: .orange), Page(color: .green), Page(color: .clear)])
+        MultiTransformationPagerView()
+            .environmentObject(PagerState())
             .edgesIgnoringSafeArea(.all)
             .colorScheme(.dark)
             .background(Color.black.edgesIgnoringSafeArea(.all))
