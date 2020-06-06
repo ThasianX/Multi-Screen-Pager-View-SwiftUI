@@ -11,7 +11,7 @@ struct SidePage: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Color.orange
+            Color.green
             VStack(spacing: 0) {
                 Text("PagePagePagePagePagePagePagePage")
                 Text("PagePagePagePagePagePagePagePage")
@@ -34,11 +34,7 @@ struct CenterPage: View, PagerStateDirectAccess {
     @EnvironmentObject var pagerState: PagerState
 
     private var contentOpacity: Double {
-        // We want to see how far we've swiped
-        let delta = translation / pagerWidth
-
-        // This means we're swiping left
-        if delta < 0 {
+        if isSwipingLeft {
             // If we're at the last page and we're swiping left into the empty
             // space to the right, the center opacity should remain as it is
             guard currentPageIndex != 2 else { return centerMinOpacity }
@@ -56,7 +52,7 @@ struct CenterPage: View, PagerStateDirectAccess {
                 let opacityToBeRemoved = Double(-delta) * (centerMaxOpacity / Double(deltaCutoff))
                 return centerMaxOpacity - opacityToBeRemoved
             }
-        } else if delta > 0 {
+        } else if isSwipingRight {
             // If we're at the side page and we're swiping right into the empty
             // space to the left, the center opacity should remain as it is
             guard currentPageIndex != 0 else { return menuClosedOpacity }
@@ -83,7 +79,7 @@ struct CenterPage: View, PagerStateDirectAccess {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Color.green
+            Color.blue
             VStack(spacing: 0) {
                 Text("PagePagePagePagePagePagePagePage")
                 Text("PagePagePagePagePagePagePagePage")
@@ -157,6 +153,18 @@ extension PagerStateDirectAccess {
 
     var translation: CGFloat {
         pagerState.translation
+    }
+
+    var delta: CGFloat {
+        translation / pagerWidth
+    }
+
+    var isSwipingLeft: Bool {
+        translation < 0
+    }
+
+    var isSwipingRight: Bool {
+        translation > 0
     }
 
 }
@@ -244,11 +252,7 @@ private extension _MultiTransformationPagerView {
         // Corner radius should only start being modified for the center and last page
         guard currentPageIndex != 0 else { return centerMinRadius }
 
-        // We want to see how far we've swiped
-        let delta = translation / pagerWidth
-
-        // This means we're swiping left
-        if delta < 0 {
+        if isSwipingLeft {
             // If we're at the last page and we're swiping left into the empty
             // space to the right, we don't want the center page's radius to change.
             guard currentPageIndex == 1 else { return centerMaxRadius }
@@ -259,7 +263,7 @@ private extension _MultiTransformationPagerView {
             // negation for clearer syntax
             let radiusToBeAdded = -delta * (centerCutoffRadius / deltaCutoff)
             return centerMinRadius + radiusToBeAdded
-        } else if delta > 0 {
+        } else if isSwipingRight {
             // If we're swiping from the center page towards the first page, we don't
             // want any radius changes to the center page
             guard currentPageIndex == 2 else { return centerMinRadius }
@@ -289,11 +293,7 @@ private extension _MultiTransformationPagerView {
         // Center page's height should only be modified for the center and last page
         guard currentPageIndex != 0 else { return nil }
 
-        // We want to see how far we've swiped
-        let delta = translation / pagerWidth
-
-        // This means we're swiping left
-        if delta < 0 {
+        if isSwipingLeft {
             // If we're at the last page and we're swiping left into the empty
             // space to the right, we don't want the center page's height to change.
             guard currentPageIndex == 1 else { return centerMinHeight }
@@ -304,7 +304,7 @@ private extension _MultiTransformationPagerView {
             // negation for clearer syntax
             let heightToBeCutoff = -delta * (centerCutoffHeight / deltaCutoff)
             return centerMaxHeight - heightToBeCutoff
-        } else if delta > 0 {
+        } else if isSwipingRight {
             // If we're swiping from the center page towards the first page, we don't
             // want any height changes to the center page
             guard currentPageIndex == 2 else { return nil }
@@ -332,11 +332,7 @@ private extension _MultiTransformationPagerView {
         // Center page's height should only be modified for the center and last page
         guard currentPageIndex != 0 else { return .init(degrees: menuClosedDegrees) }
 
-        // We want to see how far we've swiped
-        let delta = translation / pagerWidth
-
-        // This means we're swiping left
-        if delta < 0 {
+        if isSwipingLeft {
             // If we're at the last page and we're swiping left into the empty
             // space to the right, we don't want the menu's rotation angle to change
             guard currentPageIndex == 1 else { return .init(degrees: menuOpenDegrees) }
@@ -347,7 +343,7 @@ private extension _MultiTransformationPagerView {
             // negation for clearer syntax
             let degreesToBeSubtracted = Double(-delta) * (menuClosedDegrees / Double(deltaCutoff))
             return .init(degrees: menuClosedDegrees - degreesToBeSubtracted)
-        } else if delta > 0 {
+        } else if isSwipingRight {
             // If we're swiping from the center page towards the first page, we don't
             // want any rotation changes to the menu page
             guard currentPageIndex == 2 else { return .init(degrees: menuClosedDegrees) }
@@ -375,11 +371,7 @@ private extension _MultiTransformationPagerView {
         // Menu page's opacity should only be modified when either the center or menu is active
         guard currentPageIndex != 0 else { return menuClosedOpacity }
 
-        // We want to see how far we've swiped
-        let delta = translation / pagerWidth
-
-        // This means we're swiping left
-        if delta < 0 {
+        if isSwipingLeft {
             // If we're at the last page and we're swiping left into the empty
             // space to the right, the menu opacity should remain as it is open
             guard currentPageIndex == 1 else { return menuOpenOpacity }
@@ -390,7 +382,7 @@ private extension _MultiTransformationPagerView {
             // negation for clearer syntax
             let opacityToBeAdded = Double(-delta) * (menuOpenOpacity / Double(deltaCutoff))
             return menuClosedOpacity + opacityToBeAdded
-        } else if delta > 0 {
+        } else if isSwipingRight {
             // If we're swiping from the center page towards the first page, we don't
             // want any opaicty changes to the menu page
             guard currentPageIndex == 2 else { return menuClosedOpacity }
