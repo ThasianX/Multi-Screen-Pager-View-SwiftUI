@@ -25,7 +25,9 @@ struct Page: View {
                 Text("Page")
             }
         }
+        .contentShape(Rectangle())
     }
+    
 }
 
 struct MultiTransformationPagerView<Content: View>: View {
@@ -240,7 +242,7 @@ private extension MultiTransformationPagerView {
 
 struct MultiTransformationPagerView_Previews: PreviewProvider {
     static var previews: some View {
-        MultiTransformationPagerView(pages: [Page(color: getRandomColor()), Page(color: getRandomColor()), Page(color: getRandomColor())])
+        MultiTransformationPagerView(pages: [Page(color: .orange), Page(color: .green), Page(color: .blue)])
             .edgesIgnoringSafeArea(.all)
             .colorScheme(.dark)
             .background(Color.black.edgesIgnoringSafeArea(.all))
