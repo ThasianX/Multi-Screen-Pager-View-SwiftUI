@@ -6,7 +6,6 @@ struct ContentView: View {
     
     var body: some View {
         MultiTransformationPagerView()
-            .environmentObject(PagerState())
             .edgesIgnoringSafeArea(.all)
     }
 
