@@ -13,16 +13,11 @@ struct SidePage: View {
         ZStack(alignment: .leading) {
             Color.orange
             VStack(spacing: 0) {
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
             }
             .font(.title)
         }
@@ -31,26 +26,73 @@ struct SidePage: View {
 
 }
 
-struct CenterPage: View {
+fileprivate let centerMinOpacity: Double = 0
+fileprivate let centerMaxOpacity: Double = 1
+
+struct CenterPage: View, PagerStateDirectAccess {
 
     @EnvironmentObject var pagerState: PagerState
+
+    private var contentOpacity: Double {
+        // We want to see how far we've swiped
+        let delta = translation / pagerWidth
+
+        // This means we're swiping left
+        if delta < 0 {
+            // If we're at the last page and we're swiping left into the empty
+            // space to the right, the center opacity should remain as it is
+            guard currentPageIndex != 2 else { return centerMinOpacity }
+
+            // swiping to menu page
+            if currentPageIndex == 0 {
+                // negation for clearer syntax
+                let opacityToBeAdded = Double(-delta)
+                return centerMinOpacity + opacityToBeAdded
+            } else {
+                // Now we know we're on the center page and we're swiping towards the menu page,
+                // we don't want to subtract more opacity once fully faded
+                guard abs(delta) <= deltaCutoff else { return centerMinOpacity }
+                // negation for clearer syntax
+                let opacityToBeRemoved = Double(-delta) * (centerMaxOpacity / Double(deltaCutoff))
+                return centerMaxOpacity - opacityToBeRemoved
+            }
+        } else if delta > 0 {
+            // If we're at the side page and we're swiping right into the empty
+            // space to the left, the center opacity should remain as it is
+            guard currentPageIndex != 0 else { return menuClosedOpacity }
+
+            // swiping to side page
+            if currentPageIndex == 1 {
+                let opacityToBeRemoved = Double(delta)
+                return centerMaxOpacity - opacityToBeRemoved
+            } else {
+                // Now we know we're on the menu page and we're swiping towards the center page,
+                // we don't want to add more opacity once fully visible
+                guard delta <= deltaCutoff else { return centerMaxOpacity }
+
+                let opacityToBeAdded = Double(delta) * (centerMaxOpacity / Double(deltaCutoff))
+                return centerMinOpacity + opacityToBeAdded
+            }
+        } else {
+            // When the user isn't dragging anything and the center page is active, we want
+            // the menu page to be fully faded. But when the menu page is active and there is no
+            // drag, we want it to be fully visible
+            return currentPageIndex == 1 ? centerMaxOpacity : centerMinOpacity
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .leading) {
             Color.green
             VStack(spacing: 0) {
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
             }
             .font(.title)
+            .opacity(contentOpacity)
         }
         .contentShape(Rectangle())
     }
@@ -65,16 +107,11 @@ struct MenuPage: View {
         ZStack(alignment: .leading) {
             Color.clear
             VStack(spacing: 0) {
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
-                Text("Page")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
+                Text("PagePagePagePagePagePagePagePage")
             }
             .font(.title)
         }
@@ -98,6 +135,32 @@ class PagerState: ObservableObject {
 
 }
 
+protocol PagerStateDirectAccess {
+
+    var pagerState: PagerState { get }
+
+}
+
+extension PagerStateDirectAccess {
+
+    var pagerWidth: CGFloat {
+        pagerState.pagerWidth
+    }
+
+    var deltaCutoff: CGFloat {
+        pagerState.deltaCutoff
+    }
+
+    var currentPageIndex: Int {
+        pagerState.activeIndex
+    }
+
+    var translation: CGFloat {
+        pagerState.translation
+    }
+
+}
+
 struct MultiTransformationPagerView: View {
 
     var body: some View {
@@ -110,17 +173,9 @@ struct MultiTransformationPagerView: View {
 
 }
 
-struct _MultiTransformationPagerView: View {
+struct _MultiTransformationPagerView: View, PagerStateDirectAccess {
 
     @EnvironmentObject var pagerState: PagerState
-
-    private var pagerWidth: CGFloat {
-        pagerState.pagerWidth
-    }
-
-    private var deltaCutoff: CGFloat {
-        pagerState.deltaCutoff
-    }
 
     private var pageOffset: CGFloat {
         var offset = -CGFloat(currentPageIndex) * pagerWidth
@@ -177,18 +232,6 @@ struct _MultiTransformationPagerView: View {
                 .opacity(menuOpacity)
         }
     }
-}
-
-private extension _MultiTransformationPagerView {
-
-    var currentPageIndex: Int {
-        pagerState.activeIndex
-    }
-
-    var translation: CGFloat {
-        pagerState.translation
-    }
-
 }
 
 fileprivate let centerMinRadius: CGFloat = 0
