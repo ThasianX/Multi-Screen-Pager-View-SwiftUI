@@ -10,7 +10,7 @@ struct Page: View {
     let color: Color
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .leading) {
             color
             VStack(spacing: 0) {
                 Text("Page")
@@ -24,6 +24,7 @@ struct Page: View {
                 Text("Page")
                 Text("Page")
             }
+            .font(.title)
         }
         .contentShape(Rectangle())
     }
@@ -50,6 +51,7 @@ struct MultiTransformationPagerView<Content: View>: View {
                         .rotation3DEffect(self.rotationAngle(for: i, pageWidth: geometry.size.width),
                                           axis: (x: 0, y: 10.0, z: 0),
                                           anchor: .leading)
+                        .opacity(self.opacity(for: i, pageWidth: geometry.size.width))
                 }
             }
             // The alignment property here is crucial because we are telling the geometry
@@ -113,8 +115,9 @@ private extension MultiTransformationPagerView {
             // we don't want to add too much to the center radius
             guard abs(delta) <= deltaCutoff else { return centerMaxRadius }
 
-            let radiusToBeAdded = delta * (centerCutoffRadius / 0.7) // negative
-            return centerMinRadius - radiusToBeAdded
+            // negation for clearer syntax
+            let radiusToBeAdded = -delta * (centerCutoffRadius / 0.7)
+            return centerMinRadius + radiusToBeAdded
         } else if delta > 0 {
             // If we're swiping from the center page towards the first page, we don't
             // want any radius changes to the center page
@@ -162,8 +165,9 @@ private extension MultiTransformationPagerView {
             // we don't want to cut off too much of the height
             guard abs(delta) <= deltaCutoff else { return centerMinHeight }
 
-            let heightToBeCutoff = delta * (centerCutoffHeight / 0.7) // negative
-            return centerMaxHeight + heightToBeCutoff
+            // negation for clearer syntax
+            let heightToBeCutoff = -delta * (centerCutoffHeight / 0.7)
+            return centerMaxHeight - heightToBeCutoff
         } else if delta > 0 {
             // If we're swiping from the center page towards the first page, we don't
             // want any height changes to the center page
@@ -209,8 +213,9 @@ private extension MultiTransformationPagerView {
             // we don't want to over rotate the menu page
             guard abs(delta) <= deltaCutoff else { return .init(degrees: menuOpenDegrees) }
 
-            let degreesToBeSubtracted = Double(delta) * (menuClosedDegrees / 0.7) // negative
-            return .init(degrees: menuClosedDegrees + degreesToBeSubtracted)
+            // negation for clearer syntax
+            let degreesToBeSubtracted = Double(-delta) * (menuClosedDegrees / 0.7)
+            return .init(degrees: menuClosedDegrees - degreesToBeSubtracted)
         } else if delta > 0 {
             // If we're swiping from the center page towards the first page, we don't
             // want any rotation changes to the menu page
@@ -230,6 +235,54 @@ private extension MultiTransformationPagerView {
 
 }
 
+fileprivate let menuClosedOpacity: Double = 0
+fileprivate let menuOpenOpacity: Double = 1
+
+private extension MultiTransformationPagerView {
+
+    func opacity(for index: Int, pageWidth: CGFloat) -> Double {
+        guard index == 2 else { return 1 }
+        return menuOpacity(pageWidth: pageWidth)
+    }
+
+    func menuOpacity(pageWidth: CGFloat) -> Double {
+        // Menu page's opacity should only be modified when either the center or menu is active
+        guard currentPageIndex != 0 else { return menuClosedOpacity }
+
+        // We want to see how far we've swiped
+        let delta = pageTurnDelta(pageWidth: pageWidth)
+
+        // This means we're swiping left
+        if delta < 0 {
+            // If we're at the last page and we're swiping left into the empty
+            // space to the right, the menu opacity should remain as it is open
+            guard currentPageIndex == 1 else { return menuOpenOpacity }
+            // Now we know we're on the center page and we're swiping towards the last page,
+            // we don't want to add too much to the menu's opacity
+            guard abs(delta) <= deltaCutoff else { return menuOpenOpacity }
+
+            // negation for clearer syntax
+            let opacityToBeAdded = Double(-delta) * (menuOpenOpacity / 0.7)
+            return menuClosedOpacity + opacityToBeAdded
+        } else if delta > 0 {
+            // If we're swiping from the center page towards the first page, we don't
+            // want any opaicty changes to the menu page
+            guard currentPageIndex == 2 else { return menuClosedOpacity }
+
+            // When we're closing the menu, we don't account for the `deltaCutoff` because
+            // we want the menu to be fully faded once it reaches the edge of the screen,
+            // not when it's halfway across
+            let opacityToBeRemoved = Double(delta) * menuOpenOpacity
+            return menuOpenOpacity - opacityToBeRemoved
+        } else {
+            // When the user isn't dragging anything and the center page is active, we want
+            // the menu page to be fully faded. But when the menu page is active and there is no
+            // drag, we want it to be fully visible
+            return currentPageIndex == 1 ? menuClosedOpacity : menuOpenOpacity
+        }
+    }
+}
+
 fileprivate let deltaCutoff: CGFloat = 0.7
 
 private extension MultiTransformationPagerView {
@@ -242,7 +295,7 @@ private extension MultiTransformationPagerView {
 
 struct MultiTransformationPagerView_Previews: PreviewProvider {
     static var previews: some View {
-        MultiTransformationPagerView(pages: [Page(color: .orange), Page(color: .green), Page(color: .blue)])
+        MultiTransformationPagerView(pages: [Page(color: .orange), Page(color: .green), Page(color: .clear)])
             .edgesIgnoringSafeArea(.all)
             .colorScheme(.dark)
             .background(Color.black.edgesIgnoringSafeArea(.all))
