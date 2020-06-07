@@ -39,6 +39,14 @@ struct _MultiTransformationPagerView: View, PagerStateDirectAccess {
         return offset
     }
 
+    private var boundedTranslation: CGFloat {
+        if (currentPageIndex == 0 && translation > 0) ||
+            (currentPageIndex == 2 && translation < 0) {
+            return 0
+        }
+        return translation
+    }
+
     private let sidePage = SidePage()
     private let centerPage = CenterPage()
     private let menuPage = MenuPage()
@@ -49,7 +57,7 @@ struct _MultiTransformationPagerView: View, PagerStateDirectAccess {
             // Also accounts for subsequent page turns that change `currentIndex`
             .offset(x: pageOffset)
             // Accounts for user swipe gesture to go to a different page
-            .offset(x: translation)
+            .offset(x: boundedTranslation)
             .animation(.easeInOut)
             .gesture(
                 DragGesture().onChanged { value in
