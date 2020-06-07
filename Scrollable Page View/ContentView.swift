@@ -15,6 +15,8 @@ struct ContentView_Previews: PreviewProvider {
 
     static var previews: some View {
         ContentView()
+            .colorScheme(.dark)
+            .background(Color.black.edgesIgnoringSafeArea(.all))
     }
 
 }
